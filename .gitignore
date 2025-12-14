@@ -1,0 +1,7 @@
+*.out
+.vscode/
+.idea/
+*.iml
+.DS_Store
+coverage.txt
+coverage.html

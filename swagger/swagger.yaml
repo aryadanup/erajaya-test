@@ -1,0 +1,133 @@
+basePath: /
+definitions:
+  request.Product:
+    properties:
+      created_by:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+      quantity:
+        type: integer
+    required:
+    - created_by
+    - description
+    - name
+    - price
+    - quantity
+    type: object
+  response.StdResponse:
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@erajaya-test.com
+    name: API Support
+  description: Product management API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: erajaya-test Product API
+  version: "1.0"
+paths:
+  /api/v1/products:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of products with optional filtering and pagination
+      parameters:
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Sort field
+        in: query
+        name: sort
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+      summary: List all products
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product with the provided information
+      parameters:
+      - description: Product object
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/request.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+      summary: Create a new product
+      tags:
+      - products
+  /api/v1/products/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a single product by its ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StdResponse'
+      summary: Get product by ID
+      tags:
+      - products
+schemes:
+- http
+swagger: "2.0"

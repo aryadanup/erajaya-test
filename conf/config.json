@@ -1,0 +1,29 @@
+{
+    "server": {
+        "port": "8080",
+        "timeout": 30,
+        "host": "localhost",
+        "env": "development",
+        "version": "1.0.0",
+        "app_name": "Product API",
+        "rate_limit": 10000
+    },
+    "postgres": {
+        "host": "localhost",
+        "port": 5432,
+        "user": "user",
+        "password": "password",
+        "dbname": "erajaya_db",
+        "debug": true,
+        "max_idle_conns": 50,
+        "max_open_conns": 100,
+        "conn_max_lifetime": "1h",
+        "conn_max_idle_time": "10m"
+    },
+    "redis": {
+        "host": "localhost",
+        "port": 6379,
+        "password": "",
+        "dbname": "0"
+    }
+}

@@ -1,0 +1,13 @@
+structname: "{{.InterfaceName}}"
+filename: "{{.InterfaceName}}.go"
+dir: ./mocks
+pkgname: mocks
+recursive: true
+packages:
+  erajaya-test/internal/interfaces:
+    config:
+      all: true
+      dir: ./mocks
+    interfaces:
+      ProductRepository: {}
+      ProductUsecase: {}
