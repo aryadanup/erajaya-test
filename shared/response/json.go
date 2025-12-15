@@ -19,7 +19,7 @@ type ApiResponse struct {
 	Error    any    `json:"error,omitempty"`
 	Code     string `json:"code"`
 	Metadata any    `json:"metadata,omitempty"`
-	HTTPCode any    `json:"http_code,omitempty"`
+	HTTPCode any    `json:"-"`
 }
 
 type StdPagination struct {

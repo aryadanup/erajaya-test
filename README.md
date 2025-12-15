@@ -11,10 +11,21 @@ This project adheres to **Clean Architecture** principles to ensure separation o
 3.  **Usecase (Business Logic)**: Contains the application's business rules and orchestrates data flow between the repository and the delivery layer. Located in `internal/usecase`.
 4.  **Delivery (Transport)**: Handles HTTP requests, parses input, and formats responses. Located in `internal/delivery/http`.
 
-**Why Clean Architecture?**
--   **Testability**: Each layer can be tested in isolation using mocks.
--   **Maintainability**: Changes in one layer (e.g., swapping a database) interfere minimally with others.
--   **Independence**: The business logic is not coupled to web frameworks or external agents.
+🏗 **Why Clean Architecture?**
+<br> We use Clean Architecture to keep the project organized, stable, and easy to grow.
+
+-   **Reliable Testing**: We can test the main business logic quickly and safely. This allows us to achieve 100% Code Coverage without needing a complicated setup.
+
+-   **Easy to Update**: The core application is safe from outside changes. We can switch databases or upgrade tools in the future without breaking the main features.
+
+-   **Tidy & Organized Code**: Every part of the code has a specific place. This helps new developers understand the project faster and prevents messy code ("spaghetti code").
+
+🧩 **Key Design Patterns**
+-  **Repository Pattern**: Acts as a "Data Manager." The application simply asks for data, and this pattern handles whether to fetch it from the fast cache (Redis) or the main database (PostgreSQL).
+
+-   **Factory Pattern**: "Centralizes the database setup in shared/datastore. It handles the complexity of connecting to Postgres or Redis, keeping the main application code clean and focused."
+
+-   **Dependency Injection (DI)**: "Promotes a modular design where system components are loosely coupled. This makes it effortless to test individual parts or swap technologies in the future."
 
 ```
 .
@@ -38,10 +49,6 @@ This project adheres to **Clean Architecture** principles to ensure separation o
 └── Makefile        # Build and run commands
 ```
 
-**Design Patterns**:
--   **Repository Pattern**: Abstracts data sources (SQL/Redis) from business logic.
--   **Factory Pattern**: Used in shared/datastore for initializing database connections.
--   **Dependency Injection**: All dependencies are injected via constructors to facilitate Mocking.
 
 ## 🛠 Tech Stack
 -   **Language**: Go 1.24+
@@ -209,20 +216,48 @@ The API is hardened against common vulnerabilities suitable for Enterprise deplo
     ```bash
     make docker-up
     ```
-2.  **Run Migrations**:
+2.  **Intall Golang Migrate**:
+    ```bash
+    make migrate-setup
+    ```
+3.  **Run Migrations**:
     ```bash
     make migrate-up
     ```
-3.  **Add config.json in conf/**:
+4.  **Add config.json in conf/**:
     configuration is managed via JSON files in the conf/ directory.
     ```json
     {
-        "server": { "port": "8080", "env": "development" },
-        "postgres": { ... },
-        "redis": { ... }
+        "server": {
+            "port": "8080",
+            "timeout": 30,
+            "host": "localhost",
+            "env": "development",
+            "version": "1.0.0",
+            "app_name": "Product API",
+            "rate_limit": 10000
+        },
+        "postgres": {
+            "host": "localhost",
+            "port": 5432,
+            "user": "user",
+            "password": "password",
+            "dbname": "erajaya_db",
+            "debug": true,
+            "max_idle_conns": 50,
+            "max_open_conns": 100,
+            "conn_max_lifetime": "1h",
+            "conn_max_idle_time": "10m"
+        },
+        "redis": {
+            "host": "localhost",
+            "port": 6379,
+            "password": "",
+            "dbname": "0"
+        }
     }
     ```
-4.  **Run Application**:
+5.  **Run Application**:
     ```bash
     make run
     ```
@@ -259,9 +294,18 @@ The API is hardened against common vulnerabilities suitable for Enterprise deplo
 
 
 ## 📝 API Documentation
-Swagger UI is available at:
+**Swagger UI is available at**:
 
+```bash
     http://localhost:8080/swagger/index.html
+```
+
+**Generate Swagger**:
+
+```bash
+    make swagger
+```
+    
 
 ### **Endpoints**
 

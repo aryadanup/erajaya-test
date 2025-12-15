@@ -29,9 +29,9 @@ func NewHandler(productUsecase interfaces.ProductUsecase, standardResponse *resp
 // @Accept json
 // @Produce json
 // @Param product body request.Product true "Product object"
-// @Success 201 {object} response.StdResponse
-// @Failure 400 {object} response.StdResponse
-// @Failure 500 {object} response.StdResponse
+// @Success 201 {object} response.ApiResponse{data=request.Product}
+// @Failure 400 {object} response.ApiResponse{error=[]utils.ValidationError}
+// @Failure 500 {object} response.ApiResponse{error=error}
 // @Router /api/v1/products [post]
 func (h *ProductHandler) CreateProduct(c echo.Context) error {
 	var req request.Product
@@ -62,8 +62,8 @@ func (h *ProductHandler) CreateProduct(c echo.Context) error {
 // @Param sort query string false "Sort field"
 // @Param page query int false "Page number"
 // @Param limit query int false "Items per page"
-// @Success 200 {object} response.StdResponse
-// @Failure 500 {object} response.StdResponse
+// @Success 200 {object} response.ApiResponse{data=[]request.Product,metadata=response.StdPagination}
+// @Failure 500 {object} response.ApiResponse{error=error}
 // @Router /api/v1/products [get]
 func (h *ProductHandler) ListProducts(c echo.Context) error {
 	search := c.QueryParam("search")
@@ -104,9 +104,9 @@ func (h *ProductHandler) ListProducts(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path int true "Product ID"
-// @Success 200 {object} response.StdResponse
-// @Failure 404 {object} response.StdResponse
-// @Failure 500 {object} response.StdResponse
+// @Success 200 {object} response.ApiResponse{data=request.Product}
+// @Failure 404 {object} response.ApiResponse{error=error}
+// @Failure 500 {object} response.ApiResponse{error=error}
 // @Router /api/v1/products/{id} [get]
 func (h *ProductHandler) GetProductByID(c echo.Context) error {
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)

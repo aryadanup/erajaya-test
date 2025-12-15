@@ -19,7 +19,32 @@ definitions:
     - price
     - quantity
     type: object
-  response.StdResponse:
+  response.ApiResponse:
+    properties:
+      code:
+        type: string
+      data: {}
+      error: {}
+      message: {}
+      metadata: {}
+    type: object
+  response.StdPagination:
+    properties:
+      limit:
+        type: integer
+      next_page:
+        type: boolean
+      page:
+        type: integer
+      prev_page:
+        type: boolean
+      total:
+        type: integer
+    type: object
+  utils.ValidationError:
+    properties:
+      parameter:
+        type: string
     type: object
 host: localhost:8080
 info:
@@ -62,11 +87,24 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/request.Product'
+                  type: array
+                metadata:
+                  $ref: '#/definitions/response.StdPagination'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                error: {}
+              type: object
       summary: List all products
       tags:
       - products
@@ -87,15 +125,31 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/request.Product'
+              type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                error:
+                  items:
+                    $ref: '#/definitions/utils.ValidationError'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                error: {}
+              type: object
       summary: Create a new product
       tags:
       - products
@@ -116,15 +170,28 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/request.Product'
+              type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                error: {}
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/response.StdResponse'
+            allOf:
+            - $ref: '#/definitions/response.ApiResponse'
+            - properties:
+                error: {}
+              type: object
       summary: Get product by ID
       tags:
       - products

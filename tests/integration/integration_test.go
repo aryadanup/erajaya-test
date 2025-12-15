@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,10 +23,36 @@ import (
 	"erajaya-test/internal/repository"
 	"erajaya-test/internal/usecase"
 
+	"encoding/json"
 	"erajaya-test/shared/datastore"
 	"erajaya-test/shared/response"
 	"erajaya-test/shared/utils"
 )
+
+type safeWriter struct {
+	http.ResponseWriter
+	mu       sync.Mutex
+	timedOut bool
+}
+
+func (w *safeWriter) Write(b []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.timedOut {
+		return 0, nil
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func (w *safeWriter) WriteHeader(statusCode int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.timedOut {
+		return
+	}
+	w.ResponseWriter.WriteHeader(statusCode)
+}
 
 type ProductTestSuite struct {
 	suite.Suite
@@ -99,40 +126,6 @@ func (s *ProductTestSuite) SetupSuite() {
 		return c.String(http.StatusOK, "ok")
 	})
 
-	customTimeout := func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			ctx, cancel := context.WithTimeout(c.Request().Context(), 100*time.Millisecond)
-			defer cancel()
-
-			req := c.Request().WithContext(ctx)
-			c.SetRequest(req)
-
-			done := make(chan error, 1)
-			go func() {
-
-				done <- next(c)
-			}()
-
-			select {
-			case <-ctx.Done():
-				return c.JSON(http.StatusRequestTimeout, map[string]interface{}{
-					"error":   "timeout",
-					"code":    response.CodeRequestTimeout,
-					"data":    nil,
-					"message": response.RequestTimeout,
-				})
-			case err := <-done:
-				return err
-			}
-		}
-	}
-
-	v1.GET("/test-timeout", func(c echo.Context) error {
-		// Sleep longer than the timeout
-		time.Sleep(300 * time.Millisecond)
-		return c.String(http.StatusOK, "done")
-	}, customTimeout)
-
 	s.cleanups = append(s.cleanups, func() {
 		pgFactory.Close(ctx)
 		redisFactory.Close(ctx)
@@ -173,12 +166,12 @@ func (s *ProductTestSuite) TestSQLInjection() {
 			"' OR SLEEP(5)--",
 		}
 
-		for _, p := range testcase {
-			s.Run("Payload_"+p, func() {
-				encodedPayload := url.QueryEscape(p)
+		for _, tc := range testcase {
+			s.Run("Payload_"+tc, func() {
+				encodedPayload := url.QueryEscape(tc)
 				rec := s.sendRequest(http.MethodGet, "/api/v1/products?search="+encodedPayload, "", "application/json")
 
-				s.NotEqual(http.StatusInternalServerError, rec.Code, "Search payload caused 500: %s", p)
+				s.NotEqual(http.StatusInternalServerError, rec.Code, "Search payload caused 500: %s", tc)
 			})
 		}
 	})
@@ -191,13 +184,13 @@ func (s *ProductTestSuite) TestSQLInjection() {
 			"non_existent_column",
 		}
 
-		for _, p := range testcase {
-			s.Run("Payload_"+p, func() {
-				encodedPayload := url.QueryEscape(p)
+		for _, tc := range testcase {
+			s.Run("Payload_"+tc, func() {
+				encodedPayload := url.QueryEscape(tc)
 
 				rec := s.sendRequest(http.MethodGet, "/api/v1/products?sort="+encodedPayload, "", "application/json")
 
-				s.NotEqual(http.StatusInternalServerError, rec.Code, "Sort payload caused 500: %s", p)
+				s.NotEqual(http.StatusInternalServerError, rec.Code, "Sort payload caused 500: %s", tc)
 			})
 		}
 	})
@@ -208,9 +201,9 @@ func (s *ProductTestSuite) TestXSS() {
 		"<img src=x onerror=alert('XSS')>",
 	}
 
-	for _, p := range testcase {
-		s.Run("Payload_"+p, func() {
-			body := fmt.Sprintf(`{"name":"%s", "price":1000, "description":"%s", "quantity":1}`, p, p)
+	for _, tc := range testcase {
+		s.Run("Payload_"+tc, func() {
+			body := fmt.Sprintf(`{"name":"%s", "price":1000, "description":"%s", "quantity":1}`, tc, tc)
 			rec := s.sendRequest(http.MethodPost, "/api/v1/products", body, "application/json")
 
 			if rec.Code == http.StatusCreated {
@@ -310,8 +303,66 @@ func (s *ProductTestSuite) TestRateLimit() {
 	}
 }
 
+func customTimeout(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		writer := &safeWriter{ResponseWriter: c.Response().Writer}
+		c.Response().Writer = writer
+
+		ctx, cancel := context.WithTimeout(c.Request().Context(), 100*time.Millisecond)
+		defer cancel()
+
+		req := c.Request().WithContext(ctx)
+		c.SetRequest(req)
+
+		done := make(chan error, 1)
+		go func() {
+			done <- next(c)
+		}()
+
+		select {
+		case <-ctx.Done():
+			writer.mu.Lock()
+			writer.timedOut = true
+			writer.mu.Unlock()
+
+			origWriter := writer.ResponseWriter
+			origWriter.Header().Set("Content-Type", "application/json")
+			origWriter.WriteHeader(http.StatusRequestTimeout)
+
+			resp := map[string]interface{}{
+				"error":   "timeout",
+				"code":    response.CodeRequestTimeout,
+				"data":    nil,
+				"message": response.RequestTimeout,
+			}
+			jsonBytes, _ := json.Marshal(resp)
+			origWriter.Write(jsonBytes)
+
+			c.Response().Committed = true
+
+			return nil
+		case err := <-done:
+			return err
+		}
+	}
+}
+
 func (s *ProductTestSuite) TestTimeout() {
-	rec := s.sendRequest(http.MethodGet, "/api/v1/test-timeout", "", "application/json")
+
+	isolatedEcho := echo.New()
+	isolatedEcho.Validator = &utils.CustomValidator{Validator: validator.New()}
+
+	isolatedEcho.GET("/test-timeout", func(c echo.Context) error {
+		time.Sleep(300 * time.Millisecond)
+		return nil
+	}, customTimeout)
+
+	req := httptest.NewRequest(http.MethodGet, "/test-timeout", nil)
+	req.Header.Set(echo.HeaderContentType, "application/json")
+	rec := httptest.NewRecorder()
+
+	isolatedEcho.ServeHTTP(rec, req)
+
 	s.Equal(http.StatusRequestTimeout, rec.Code, "Should return 408 Request Timeout on timeout")
 	s.Contains(rec.Body.String(), response.CodeRequestTimeout)
 }

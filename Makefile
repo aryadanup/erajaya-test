@@ -70,8 +70,8 @@ migrate-create:
 
 migrate-up:
 	@echo "Running migrations up..."
-	@migrate -path migrations -database "postgres://user:password@localhost:5432/erajaya-test_db?sslmode=disable" up
+	@migrate -path migrations -database "postgres://user:password@localhost:5432/erajaya_db?sslmode=disable" up
 
 migrate-down:
 	@echo "Running migrations down..."
-	@migrate -path migrations -database "postgres://user:password@localhost:5432/erajaya-test_db?sslmode=disable" down
+	@migrate -path migrations -database "postgres://user:password@localhost:5432/erajaya_db?sslmode=disable" down
